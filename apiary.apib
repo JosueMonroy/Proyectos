@@ -1,0 +1,340 @@
+FORMAT: 1A
+HOST: http://polls.apiblueprint.org/
+
+# Botón de Pánico
+
+El botón de pánico es una aplicación anti-robo creado con Node.js, Angular e Ionic
+
+## Usuarios [/users]
+
+### Get (obtener) [GET]
+    Obtiene la lista de Usuarios
+    
++ Response 200 (application/json)
+
+        function getUsers(req, res){
+            var page = 1;
+            var itemsPerPage = 30;
+        
+            if(req.params.page){
+                page = req.params.page;
+            }
+        
+            Usuario.find().sort('_id').paginate(page, itemsPerPage, (err, usuarios, total) => {
+                if(err) return res.status(500).send({message: 'Error en la petición'});
+        
+                if(!usuarios) return res.status(204).send({message: 'No hay usuarios por mostrar'});
+        
+                return res.status(200).send({page, total, pages: Math.ceil(total/itemsPerPage)});
+            });
+        }
+
+### Insertar [POST]
+    Ingresar un nuevo dato a la base
+
++ Response 201 (application/json)
+
+        function saveUser(req, res){
+            user.save((err, userStored) => {
+                if(err) return res.status(500).send({message: 'error en la petición'});
+
+                if(userStored){
+                    res.status(201).send({usuario: userStored});
+                } else {
+                    res.status(404).send({message: 'No se ha podido registrar'});
+                }
+            });
+        }
+        
+### Iniciar Sesión (login) [POST]
+    Encontrar un usuario para iniciar sesión en la aplicación
+
++ Response 200 (application/json)
+
+        function loginUser(req, res){
+            Usuario.findOne({dpi: dpi}, (err, usuario) => {
+                if(err) return res.status(500).send({message: 'error en la petición'});
+                
+                if (usuario){
+                    bcrypt.compare(password, usuario.password, (err, check) =>{
+                        if(check){
+                            if(params.gettoken){
+                                return res.status(200).send({
+                                    token: jwt.crearToken(usuario)});
+                            }else{
+                                return res.status(200).send({usuario});
+                            }
+                        }else{
+                            return res.status(404).send({message: 'el usuario no se ha podido logear'})
+                        }
+                    });
+                }
+            }
+        }
+
+### Actualizar [PUT]
+    Actualiza tu usuario
+
++ Response 200 (application/json)
+
+        function updateUser(req, res) {
+        
+            Usuario.findByIdAndUpdate(userId, update, {new: true}, (err, userUpdated) => {
+                if (err) return res.status(500).send({message: 'error en la petición'});
+        
+                if(!userUpdated) return res.status(404).send({message: 'no se ha encontrado el usuario'});
+        
+                return res.status(200).send({user: userUpdated});
+            });
+        }
+
+## Alarmas [/alarms]
+
+### Nueva Alarma [POST]
+    Activar una alarma de robo
+
++ Response 201 (application/json)
+
+        function newAlarm(req, res){
+            var alarm = new Alarm();
+            
+            alarm.user = req.user.sub;
+            alarm.date = moment().day() + '/' + moment().month() + '/' + moment().year();
+            alarm.hour = moment().hour();
+            
+            User.findById(alarm.user, (err, Find) => {
+                if (err) return res.status(500).send({message: 'Error en la petición'});
+        
+                if(Find){
+                    alarm.city = Find.city
+                }
+            });
+        
+            alarm.save((err, alarmStored) => {
+                if(err) return res.status(500).send({message: 'Error en la petición'});
+        
+                if(alarmStored){
+                    res.status(201).sned({alarm: alarmStored});
+                    alarmId = alarm._id;
+        
+                } else {
+                    res.status(404).send({message: 'No se ha podido guardar'});
+                }
+            });
+        }
+        
+        
+## Chat [/chats]
+
+### Enviar Mensaje [POST]
+    Guardar en la base de datos el mensaje enviado
+
++ Response 201 (application/json)
+
+        function saveChat(req, res){
+            if(!params.content || !params.sendTo) return res.status(200).send({message: 'Llene los campos necesarios'});
+        
+            mensaje.save((err, mensajeStored) => {
+                if(err) return res.status(500).send({message: 'error en la peticion'});
+        
+                if(!mensajeStored) return res.status(404).send({message: 'error al enviar el mensaje'});
+        
+                return res.status(200).send({mensajes: mensajeStored});
+            });
+        }
+        
+        
+### Obtener Mensajes [GET]
+    Enlistar todos los mensajes que han sido enviados y recibidos
+    
++ Response 200 (application/json)
+
+        function getMensajes(req,res){
+            var page = 1;
+            var itemsPerPage = 5;
+                
+            if(req.params.page){
+                page = req.params.page;
+            }
+                
+            Mensaje.find().sort('_id').paginate(page, itemsPerPage,(err,mensajes,total) =>{
+                if(err) return res.status(500).send({message: 'error en la peticion'});
+                    
+                if(!mensajes) return res.status(404).send({message: 'no hay mensajes por mostrarar'});
+                    
+                return res.status(200).send({page,total, pages: Math.ceil(total/itemsPerPage)});
+            });
+        }
+        
+### Marcar Visto [PUT]
+    Marca cuando un mensaje ya ha sido visto por el usuario al que fue enviado
+    
++ Response 200 (application/json)
+
+        function marcarVistos(req,res){
+            var usuarioId = req.user.sub;
+                
+            Mensaje.update({receptor:usuarioId, visto:'false'},{visto:'true'}, {"multi":true},(err,mensajesVistos) =>{
+                if(err) return res.status(500).send({message: 'error en la peticion'});
+                
+                return res.status(200).send({mensajes: mensajesVistos});
+            });
+        }
+
+
+## Reportes [/reports]
+
+### Insertar nuevo [POST]
+    Guardar un reporte
+    
++ Response 201 (application/json)
+
+        function saveReport(req, res){
+            report.save((err, reportStored) => {
+                if(err) return res.status(500).send({message: 'error en la peticion'});
+            
+                if(!reportStored) return res.status(404).send({message: 'error al enviar el reporte'});
+            
+                return res.status(201).send({reports: reportStored});
+            });
+        }
+
+### Get de reportes [GET]
+    Listar los reportes enviados
+
++ Response 200 (application/json)
+
+        function getReports(req, res){
+            var page = 1;
+            var itemsPerPage = 5;
+            
+            if(req.params.page){
+                page = req.params.page;
+            }
+            
+            Report.find().sort('_id').paginate(page, itemsPerPage,(err,mensajes,total) =>{
+                if(err) return res.status(500).send({message: 'error en la peticion'});
+            
+                if(!mensajes) return res.status(204).send({message: 'no hay reportes por mostrar'});
+            
+                return res.status(200).send({page,total, pages: Math.ceil(total/itemsPerPage)});
+            });
+        }
+        
+## Contactos [/contacts]
+
+### Añadir [POST]
+    Agregar nuevo contacto de confianza
+
++ Response 201 (application/json)
+
+        function saveContact(req, res){
+            contact.save((err, contactStored) => {
+                if(err) return res.status(500).send({message: 'error al guardar'});
+            
+                if(contactStored){
+                    res.status(201).send({contact: contactStored});
+                } else {
+                    res.status(404).send({message: 'no se pudo guardar'});
+                }
+            });
+        }
+
+##Mensajes [/messages]
+
+### Enviar Mensaje [POST]
+    Mándanos un mensaje
+
++ Response 201 (application/json)
+
+        function sendMessage(req, res){
+            sended.save((err, messageStored) => {
+                if(err) return res.status(500).send({message: 'Error en la petición'});
+    
+                if(messageStored){
+                    res.status(201).send({sended: messageStored});
+                } else {
+                    res.status(404).send({message: 'No se ha podido guardar'});
+                }
+            });
+        }
+
+### Obtener la lista de mensajes [GET]
+    Saber qué mensajes han llegado, pero sin cuerpo de mensaje
+
++ Response 200 (application/json)
+
+        function getListMessages(req, res){
+            var page = 1;
+            var itemsPerPage = 25;
+        
+            if(req.params.page){
+                page = req.params.page;
+            }
+        
+            Message.find().sort('_id').paginate(page, itemsPerPage, (err, mensajes, total) => {
+                if(err) return res.status(500).send({message: 'Error en la petición'});
+        
+                if(!mensajes) return res.status(204).send({message: 'No hay mensajes por mostrar'});
+        
+                return res.status(200).send({page,total, pages: Math.ceil(total/itemsPerPage)});
+            });
+        }
+        
+### Ver mensaje [GET]
+    Ver el cuerpo de un mensaje específico
+    
++ Response 200 (aplication/json)
+
+        function getMessage(req, res){
+            var id = req.params.id;
+            Message.find({_id: id}).exec((err, mensaje) => {
+                if(err) return res.status(500).send({message: 'Error en la petición');
+                
+                if(!mensaje) return res.status(204).send({message: 'No se ha encontrado el mensaje'});
+                
+                return res.status(200).send({Message: mensaje});
+            });
+        }
+
+## Policías [/policemen]
+
+### Añadir [POST]
+    Añadir un nuevo policía, sólo puede ser añadido por otro policía de rango superior por un administrador
+    
++ Response 201 (application/json)
+
+        function savePolice(req, res){
+            police.save((err, policeStored) => {
+                if(err) return res.status(500).send({message: 'Error en la petición'});
+                
+                if(policeStored){
+                    res.status(201).sned({police: policeStored});
+                } else {
+                    res.status(404).send({message: 'No se ha podido guardar'});
+                }
+            });
+        }
+
+## Administradores [/roots]
+
+### Añadir [POST]
+    Agregar un nuevo administrador, sólo puede ser agregrado por otro ya existente
+    
++ Response 201 (application/json)
+
+        function saveRoot(req, res){
+            bcrypt.hash(params.password, null, null, (err, hash) => {
+                roots.password = hash;
+            
+                root.save((err, rootStored) => {
+                    if(err) return res.status(500).send({message: 'error en la petición'});
+            
+                    if(rootStored){
+                        res.status(201).send({root: rootStored});
+                    } else {
+                        res.status(404).send({message: 'No se ha podido registrar'});
+                    }
+                });
+            });
+        }
